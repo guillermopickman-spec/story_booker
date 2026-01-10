@@ -1,0 +1,57 @@
+# PROJECT SPECIFICATION: AI STICKER-BOOK GENERATOR (FastAPI + Agents)
+
+## 1. PROJECT OVERVIEW
+A FastAPI backend that generates a multi-page storybook. Each page contains:
+- 2 paragraphs of generated story.
+- 1-3 "sticker-style" images with transparent backgrounds.
+- High-quality PDF output with "UV-mapped" (non-overlapping) layouts.
+
+## 2. TECH STACK
+- Framework: FastAPI (Asynchronous)
+- Agent Logic: Structured JSON outputs via GPT-4o-mini (initial) or Claude 3.5 Haiku.
+- Image Processing: Pillow (PIL) for Alpha-channel masking and cropping.
+- PDF Generation: FPDF2.
+- Task Management: FastAPI BackgroundTasks (In-memory status tracking).
+
+## 3. DATA MODELS (Pydantic)
+- StoryBeat: { "text": str, "visual_description": str, "sticker_subjects": List[str] }
+- StoryBook: { "title": str, "beats": List[StoryBeat] }
+- JobStatus: { "job_id": str, "status": str, "file_path": Optional[str] }
+
+## 4. PHASED IMPLEMENTATION PLAN
+
+### PHASE 1: API FOUNDATION
+- Setup directory structure: /app, /services, /output, /assets.
+- Implement `POST /generate` -> returns job_id.
+- Implement `GET /status/{job_id}` -> returns progress percentage/status.
+- Implement `GET /download/{job_id}` -> returns final PDF.
+
+### PHASE 2: NARRATIVE & PROMPT AGENT
+- System prompt for "Author Agent": Create 5 story beats from a theme.
+- System prompt for "Art Director Agent": Convert story beats into technical 3D-modeling prompts.
+- Strategy: Force JSON output using Pydantic models to ensure stable parsing.
+
+### PHASE 3: THE STICKER FACTORY (IMAGE SERVICE)
+- Integration with an Image API (starting with a placeholder/mock).
+- Script "Background Remover": 
+    - Convert RGB to RGBA.
+    - Identify "white-ish" background pixels and set Alpha to 0.
+    - Autocrop to the content bounding box.
+- Save processed stickers as PNGs in /assets/{job_id}/.
+
+### PHASE 4: LAYOUT ENGINE (PDF COMPILER)
+- Logic for Page Generation:
+    - Place text in a fixed footer/header.
+    - Define a "Sticker Canvas" area.
+    - Implementation of "Simple Grid Packing": Divide canvas into cells, place one sticker per cell with random rotation (-10 to +10 degrees).
+- Generate PDF and save to /output/.
+
+### PHASE 5: INTEGRATION & REFINEMENT
+- Connect BackgroundTasks to execute Phase 2 -> 3 -> 4 sequentially.
+- Error handling for API timeouts.
+- Add "Sticker Border" logic (optional) to add a white stroke around images.
+
+## 5. PROMPT FOR CURSOR AGENT START
+"Read plan.txt. Initialize the FastAPI project skeleton as described in Phase 1. 
+Create the folder structure and the main.py file with the job tracking logic. 
+Use a dictionary to store job statuses for now."

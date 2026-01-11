@@ -29,7 +29,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Story Booker API", version="0.0.1")
+app = FastAPI(title="Story Booker API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -252,6 +252,6 @@ async def root():
     """Root endpoint with API information."""
     return {
         "name": "Story Booker API",
-        "version": "0.0.1",
+        "version": "0.1.0",
         "description": "AI Sticker-Book Generator"
     }

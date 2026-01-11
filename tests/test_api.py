@@ -27,7 +27,7 @@ def test_root_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "Story Booker API"
-    assert data["version"] == "0.0.1"
+    assert data["version"] == "0.1.0"
     assert data["description"] == "AI Sticker-Book Generator"
 
 

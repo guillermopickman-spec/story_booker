@@ -1,57 +1,242 @@
-# PROJECT SPECIFICATION: AI STICKER-BOOK GENERATOR (FastAPI + Agents)
+# 📚 Story Booker - Development Plan
 
-## 1. PROJECT OVERVIEW
-A FastAPI backend that generates a multi-page storybook. Each page contains:
-- 2 paragraphs of generated story.
-- 1-3 "sticker-style" images with transparent backgrounds.
-- High-quality PDF output with "UV-mapped" (non-overlapping) layouts.
+## ✅ Current Status (v0.2.0)
 
-## 2. TECH STACK
-- Framework: FastAPI (Asynchronous)
-- Agent Logic: Structured JSON outputs via GPT-4o-mini (initial) or Claude 3.5 Haiku.
-- Image Processing: Pillow (PIL) for Alpha-channel masking and cropping.
-- PDF Generation: FPDF2.
-- Task Management: FastAPI BackgroundTasks (In-memory status tracking).
+### Completed Features
+- ✅ **API Foundation**: FastAPI backend with job-based async processing
+- ✅ **Story Generation**: Multi-provider LLM support (Groq, OpenAI, GPT4All)
+- ✅ **Image Generation**: Pollinations.ai and OpenAI DALL-E integration
+- ✅ **Character Consistency**: Character extraction, reference images, and visual DNA locking
+- ✅ **Art Style Templates**: CLAYMATION, VINTAGE_SKETCH, FLAT_DESIGN, 3D_RENDERED, WATERCOLOR, LINE_ART
+- ✅ **Cover & Back Cover**: Full-bleed cover with title, back cover with synopsis
+- ✅ **Multi-Language Support**: English and Spanish story generation
+- ✅ **Full-Page Illustrations**: Complete scene illustrations per page
+- ✅ **PDF Generation**: Professional layout with text overlay
+- ✅ **Progress Tracking**: Real-time job status and progress monitoring
 
-## 3. DATA MODELS (Pydantic)
-- StoryBeat: { "text": str, "visual_description": str, "sticker_subjects": List[str] }
-- StoryBook: { "title": str, "beats": List[StoryBeat] }
-- JobStatus: { "job_id": str, "status": str, "file_path": Optional[str] }
+---
 
-## 4. PHASED IMPLEMENTATION PLAN
+## 🎯 Next Improvements (Priority Order)
 
-### PHASE 1: API FOUNDATION
-- Setup directory structure: /app, /services, /output, /assets.
-- Implement `POST /generate` -> returns job_id.
-- Implement `GET /status/{job_id}` -> returns progress percentage/status.
-- Implement `GET /download/{job_id}` -> returns final PDF.
+### 🔴 High Priority - Commercial Viability
 
-### PHASE 2: NARRATIVE & PROMPT AGENT
-- System prompt for "Author Agent": Create 5 story beats from a theme.
-- System prompt for "Art Director Agent": Convert story beats into technical 3D-modeling prompts.
-- Strategy: Force JSON output using Pydantic models to ensure stable parsing.
+#### 1. Print-on-Demand (POD) Preflight
+**Goal**: Make PDFs Amazon KDP-ready
+- **CMYK Color Conversion**: Convert RGB images to CMYK color space for print
+- **Bleed Addition**: Add 0.125" (9pt) bleeds on all sides
+- **Margin Compliance**: Ensure proper margins for KDP requirements
+- **Color Profile**: Embed proper ICC color profiles
+- **Impact**: Enables direct publishing to Amazon KDP
 
-### PHASE 3: THE STICKER FACTORY (IMAGE SERVICE)
-- Integration with an Image API (starting with a placeholder/mock).
-- Script "Background Remover": 
-    - Convert RGB to RGBA.
-    - Identify "white-ish" background pixels and set Alpha to 0.
-    - Autocrop to the content bounding box.
-- Save processed stickers as PNGs in /assets/{job_id}/.
+#### 2. Vectorized Text Layers
+**Goal**: Ensure text stays crisp at any print resolution
+- **Verify Text Rendering**: Confirm text is rendered as PDF text objects (not rasterized)
+- **Font Embedding**: Ensure fonts are properly embedded
+- **Text Accessibility**: Make text selectable and searchable
+- **Impact**: Professional print quality, accessibility compliance
 
-### PHASE 4: LAYOUT ENGINE (PDF COMPILER)
-- Logic for Page Generation:
-    - Place text in a fixed footer/header.
-    - Define a "Sticker Canvas" area.
-    - Implementation of "Simple Grid Packing": Divide canvas into cells, place one sticker per cell with random rotation (-10 to +10 degrees).
-- Generate PDF and save to /output/.
+#### 3. ISBN & Barcode Placeholder
+**Goal**: Reserve space for commercial publishing
+- **Back Cover Layout**: Add reserved space for ISBN barcode (standard dimensions)
+- **Barcode Area**: Create placeholder rectangle on back cover
+- **Positioning**: Follow industry-standard barcode placement
+- **Impact**: Ready for commercial publishing workflow
 
-### PHASE 5: INTEGRATION & REFINEMENT
-- Connect BackgroundTasks to execute Phase 2 -> 3 -> 4 sequentially.
-- Error handling for API timeouts.
-- Add "Sticker Border" logic (optional) to add a white stroke around images.
+---
 
-## 5. PROMPT FOR CURSOR AGENT START
-"Read plan.txt. Initialize the FastAPI project skeleton as described in Phase 1. 
-Create the folder structure and the main.py file with the job tracking logic. 
-Use a dictionary to store job statuses for now."
+### 🟡 Medium Priority - User Experience
+
+#### 4. Writing Style Manager
+**Goal**: Allow users to choose story writing styles
+- **Style Options**: Dr. Seuss, Educational/Factual, Whimsical, Classic Fairy Tale, etc.
+- **System Prompt Templates**: Create style-specific prompts for author agent
+- **API Parameter**: Add `writing_style` parameter to `/generate` endpoint
+- **Impact**: More variety and customization options
+
+#### 5. Trim Size Options
+**Goal**: Support different book formats
+- **Square Format**: 8.5" x 8.5" (common for children's books)
+- **Landscape Format**: 11" x 8.5"
+- **Custom Sizes**: Allow user-defined dimensions
+- **Dynamic Layout**: Adjust PDF layout based on trim size
+- **Impact**: More publishing options, better market fit
+
+#### 6. Web UI
+**Goal**: Make the tool accessible to non-technical users
+- **Frontend Framework**: React/Next.js or Vue.js
+- **Theme Input**: Simple form for story theme
+- **Style Selection**: Visual style picker
+- **Progress Visualization**: Real-time progress bars
+- **Download Interface**: Easy PDF download
+- **Impact**: Broader audience, easier adoption
+
+---
+
+### 🟢 Lower Priority - Nice to Have
+
+#### 7. Storybook History & Management
+- User accounts and authentication
+- Storybook library/dashboard
+- Edit/regenerate capabilities
+- Export history
+
+#### 8. Analytics Dashboard
+- Usage statistics
+- Popular themes/styles
+- Generation metrics
+- Performance monitoring
+
+#### 9. Additional Export Formats
+- EPUB format support
+- Print-ready PDF variants
+- Image-only exports
+- Social media formats
+
+#### 10. Advanced Features
+- Custom character uploads
+- Story templates/themes
+- Collaborative editing
+- API rate limiting and quotas
+
+---
+
+## 🗺️ Implementation Phases
+
+### Phase 1: KDP Readiness (2-4 weeks)
+**Goal**: Make books commercially viable for Amazon KDP
+
+1. **POD Preflight Implementation**
+   - Create `services/pod_preflight.py`
+   - Implement RGB to CMYK conversion
+   - Add bleed calculation and application
+   - Test with KDP requirements
+
+2. **Text Vectorization Verification**
+   - Audit current PDF generation
+   - Ensure FPDF2 renders text as vectors
+   - Add font embedding if needed
+   - Test at various resolutions
+
+3. **ISBN Barcode Placeholder**
+   - Update back cover layout in `pdf_generator.py`
+   - Add barcode placeholder rectangle
+   - Position according to industry standards
+
+**Deliverable**: KDP-ready PDFs that pass Amazon's validation
+
+---
+
+### Phase 2: Enhanced User Experience (4-6 weeks)
+**Goal**: Improve usability and customization
+
+1. **Writing Style Manager**
+   - Create style templates in `services/author_agent.py`
+   - Add `writing_style` parameter to API
+   - Test different styles
+
+2. **Trim Size Support**
+   - Refactor `pdf_generator.py` for dynamic sizing
+   - Add trim size parameter to API
+   - Update layout calculations
+
+3. **Basic Web UI**
+   - Set up frontend project (React/Next.js)
+   - Create theme input form
+   - Add style/parameter selectors
+   - Implement progress tracking UI
+   - Add download functionality
+
+**Deliverable**: User-friendly web interface with customization options
+
+---
+
+### Phase 3: Advanced Features (Ongoing)
+**Goal**: Add enterprise and advanced features
+
+1. **User Management**
+   - Authentication system
+   - User accounts
+   - Storybook library
+
+2. **Analytics & Monitoring**
+   - Usage tracking
+   - Performance metrics
+   - Error monitoring
+
+3. **Additional Formats**
+   - EPUB generation
+   - Alternative PDF formats
+   - Image exports
+
+**Deliverable**: Full-featured platform
+
+---
+
+## 📝 Technical Notes
+
+### Current Architecture
+- **Backend**: FastAPI (async)
+- **LLM**: Multi-provider (Groq, OpenAI, GPT4All)
+- **Images**: Pollinations.ai, OpenAI DALL-E
+- **PDF**: FPDF2
+- **Storage**: Local file system (assets/, output/)
+
+### Key Services
+- `author_agent.py`: Story generation
+- `art_director_agent.py`: Image prompt generation
+- `character_service.py`: Character consistency
+- `image_service.py`: Image generation
+- `pdf_generator.py`: PDF layout and generation
+- `llm_client.py`: Multi-provider LLM client
+
+### Future Considerations
+- **Database**: Consider PostgreSQL for job history
+- **Cloud Storage**: S3/CloudFlare R2 for assets
+- **Queue System**: Redis/Celery for job processing
+- **Caching**: Redis for API responses
+- **CDN**: For serving generated PDFs
+
+---
+
+## 🎯 Strategic Direction
+
+### Recommended Path: Hybrid Approach
+
+**Phase 1 (2-4 weeks)**: KDP-Ready
+- Focus on POD preflight and commercial viability
+- Test with real KDP uploads
+- Create simple workflow documentation
+
+**Phase 2 (4-6 weeks)**: Web UI
+- Build user-friendly interface
+- Keep FastAPI backend
+- Enable direct KDP-ready downloads
+
+**Phase 3 (Ongoing)**: Monetization
+- Free tier: 1 book/month
+- Paid tier: Unlimited + premium features
+- Future: KDP auto-upload integration
+
+---
+
+## 📌 Quick Reference
+
+### Current API Endpoints
+- `POST /generate` - Create storybook job
+- `GET /status/{job_id}` - Check job status
+- `GET /download/{job_id}` - Download PDF
+
+### Current Parameters
+- `theme`: Story theme (optional)
+- `num_pages`: Number of pages (1-10, default: 5)
+- `style`: Art style (CLAYMATION, VINTAGE_SKETCH, etc.)
+- `languages`: List of languages (["en"], ["es"], ["en", "es"])
+
+### Planned Parameters
+- `writing_style`: Story writing style (Dr. Seuss, Educational, etc.)
+- `trim_size`: Book dimensions (square, landscape, custom)
+- `pod_ready`: Enable POD preflight (CMYK, bleeds)
+
+---
+
+*Last Updated: v0.2.0*

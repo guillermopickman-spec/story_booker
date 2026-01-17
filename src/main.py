@@ -36,7 +36,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Story Booker API", version="0.1.0")
+app = FastAPI(title="Story Booker API", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,

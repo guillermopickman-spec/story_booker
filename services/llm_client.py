@@ -8,11 +8,14 @@ LLM Client abstraction supporting multiple providers:
 import asyncio
 import json
 import os
+import logging
 from enum import Enum
 from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class LLMProvider(str, Enum):
@@ -35,12 +38,18 @@ class LLMClient:
             model: Model name to use (defaults based on provider)
         """
         provider_str = provider or os.getenv("LLM_PROVIDER", "groq")
-        provider_str = provider_str.lower()
+        provider_str = provider_str.lower().strip()
         if provider_str not in [p.value for p in LLMProvider]:
             raise ValueError(f"Unknown provider: {provider_str}. Must be one of: {[p.value for p in LLMProvider]}")
         self.provider = provider_str
         self.model = model or self._get_default_model()
         self._clients = {}
+        
+        # Log which provider is being used
+        logger.info(f"LLMClient initialized: provider='{self.provider}', model='{self.model}'")
+        if not provider:
+            env_provider = os.getenv("LLM_PROVIDER", "NOT SET")
+            logger.info(f"  Provider from environment: LLM_PROVIDER='{env_provider}'")
         
     def _get_default_model(self) -> str:
         """Get default model based on provider."""
@@ -162,8 +171,13 @@ class LLMClient:
             providers_to_try.extend(fallback_order.get(self.provider, []))
         
         last_error = None
+        logger.info(f"LLM generation: primary provider='{self.provider}', fallback enabled={use_fallback}")
+        if use_fallback:
+            logger.info(f"  Fallback order: {providers_to_try}")
+        
         for provider in providers_to_try:
             try:
+                logger.info(f"Attempting LLM generation with provider: {provider}")
                 if provider == "groq":
                     result = await asyncio.wait_for(
                         self._generate_groq(messages, response_format, temperature),
@@ -178,7 +192,7 @@ class LLMClient:
                     return result
                 elif provider == "gpt4all":
                     result = await asyncio.wait_for(
-                        self._generate_gpt4all(messages, temperature),
+                        self._generate_gpt4all(messages, temperature, response_format),
                         timeout=timeout_seconds
                     )
                     return result
@@ -187,15 +201,18 @@ class LLMClient:
                         self._generate_mock(messages, response_format),
                         timeout=timeout_seconds
                     )
+                    logger.info(f"Successfully generated response using provider: {provider}")
                     return result
             except asyncio.TimeoutError:
                 timeout_msg = f"LLM generation timed out after {timeout_seconds}s using provider '{provider}'"
                 last_error = TimeoutError(timeout_msg)
+                logger.warning(f"Provider '{provider}' timed out. Trying next provider...")
                 if provider == providers_to_try[-1]:
                     raise last_error
                 continue
             except Exception as e:
                 last_error = e
+                logger.warning(f"Provider '{provider}' failed: {type(e).__name__}: {str(e)[:100]}. Trying next provider...")
                 if provider == providers_to_try[-1]:
                     raise
                 continue
@@ -234,7 +251,7 @@ class LLMClient:
         response = await client.chat.completions.create(**request_params)
         return response.choices[0].message.content
     
-    async def _generate_gpt4all(self, messages: List[Dict[str, str]], temperature: float) -> str:
+    async def _generate_gpt4all(self, messages: List[Dict[str, str]], temperature: float, response_format: Optional[Dict[str, str]] = None) -> str:
         """Generate using local GPT4All (synchronous, needs to be wrapped)."""
         import asyncio
         
@@ -252,6 +269,35 @@ class LLMClient:
                 prompt_parts.append(f"Assistant: {content}")
         
         prompt = "\n\n".join(prompt_parts) + "\n\nAssistant:"
+        
+        # GPT4All doesn't support response_format natively, so add JSON instruction to prompt if needed
+        if response_format and response_format.get("type") == "json_object":
+            prompt = prompt.rstrip() + "\n\nIMPORTANT: You MUST respond with valid JSON only. Do not include any text before or after the JSON. Return only the JSON object."
+        
+        # Estimate tokens: GPT4All tokenizer is more aggressive, use ~3.3 chars per token
+        prompt_chars = len(prompt)
+        estimated_tokens = int(prompt_chars / 3.3)  # More accurate for GPT4All
+        
+        # Truncate prompt if it exceeds 2048 tokens
+        # Using 3.3 chars/token estimate which is more accurate for GPT4All
+        if estimated_tokens > 1900:  # Conservative buffer (leave ~150 tokens)
+            # Try to truncate user message while keeping system
+            system_msg = next((msg.get("content", "") for msg in messages if msg.get("role") == "system"), "")
+            user_msg = next((msg.get("content", "") for msg in messages if msg.get("role") == "user"), "")
+            
+            # Calculate how much we can keep
+            # Target ~1800 tokens max (conservative), using 3.3 chars/token
+            system_chars = len(system_msg)
+            max_total_chars = int(1800 * 3.3)  # ~5940 chars for ~1800 tokens
+            max_user_chars = max_total_chars - system_chars - 300  # Leave buffer
+            
+            if len(user_msg) > max_user_chars:
+                # Truncate user message, keeping the beginning (most important info)
+                user_msg = user_msg[:max_user_chars] + "\n\n[Content truncated due to token limit]"
+                prompt_parts = []
+                prompt_parts.append(f"System: {system_msg}")
+                prompt_parts.append(f"User: {user_msg}")
+                prompt = "\n\n".join(prompt_parts) + "\n\nAssistant:"
         
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
@@ -297,6 +343,22 @@ class LLMClient:
             return json.dumps(mock_response)
         else:
             return f"Mock LLM response for: {user_message or 'test'}"
+    
+    async def close(self):
+        """Close all async client connections."""
+        for provider, client in self._clients.items():
+            try:
+                if hasattr(client, 'close'):
+                    if asyncio.iscoroutinefunction(client.close):
+                        await client.close()
+                    else:
+                        client.close()
+            except Exception as e:
+                # Log but don't raise - we want to close all clients even if one fails
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Error closing {provider} client: {e}")
+        self._clients.clear()
 
 
 def get_llm_client(provider: Optional[str] = None, model: Optional[str] = None) -> LLMClient:

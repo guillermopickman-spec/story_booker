@@ -38,7 +38,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Run the test
-python test_final_product.py
+python tests/test_final_product.py
 
 # Check exit code
 if ($LASTEXITCODE -eq 0) {

@@ -130,6 +130,7 @@ class TestArtDirectorAgent:
         
         image_prompts = await generate_image_prompts(
             beat=beat,
+            character_reference=None,
             llm_client=mock_client
         )
         
@@ -160,6 +161,7 @@ class TestArtDirectorAgent:
         
         image_prompts = await generate_image_prompts(
             beat=beat,
+            character_reference=None,
             llm_client=mock_client
         )
         
@@ -185,6 +187,7 @@ class TestArtDirectorAgent:
         with pytest.raises(ValueError, match="Failed to parse"):
             await generate_image_prompts(
                 beat=beat,
+                character_reference=None,
                 llm_client=mock_client
             )
     
@@ -201,7 +204,7 @@ class TestArtDirectorAgent:
             sticker_subjects=["mouse", "acorn"]
         )
         
-        image_prompts = await generate_image_prompts(beat)
+        image_prompts = await generate_image_prompts(beat, character_reference=None)
         
         assert len(image_prompts) >= len(beat.sticker_subjects)
         
@@ -230,7 +233,7 @@ class TestEndToEnd:
         
         # Generate image prompts for first beat
         first_beat = storybook.beats[0]
-        image_prompts = await generate_image_prompts(first_beat)
+        image_prompts = await generate_image_prompts(first_beat, character_reference=None)
         
         # Verify results
         assert len(image_prompts) >= len(first_beat.sticker_subjects)

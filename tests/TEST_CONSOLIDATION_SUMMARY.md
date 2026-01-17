@@ -66,7 +66,7 @@ Test files have been consolidated to reduce redundancy and improve maintainabili
 ### Main Integration Test (Real APIs)
 ```powershell
 cd c:\Users\Guill\Desktop\SCRIPTING\Story_Booker\SB_0.0.1
-python test_final_product.py
+python tests/test_final_product.py
 ```
 
 ### Quick Mock Test (No APIs)

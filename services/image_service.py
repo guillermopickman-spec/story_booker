@@ -52,6 +52,8 @@ class ImageService:
         self,
         prompt: str,
         size: str = "1024x1024",
+        seed: Optional[int] = None,
+        character_description: Optional[str] = None,
         use_fallback: bool = True
     ) -> bytes:
         """
@@ -60,6 +62,8 @@ class ImageService:
         Args:
             prompt: Text description of the image to generate
             size: Image size (e.g., "1024x1024", "512x512")
+            seed: Optional seed for consistency (Pollinations/Flux)
+            character_description: Optional character description for DALL-E consistency
             use_fallback: If True, try fallback providers on failure
             
         Returns:
@@ -84,13 +88,13 @@ class ImageService:
             try:
                 if provider == "pollinations":
                     result = await asyncio.wait_for(
-                        self._generate_pollinations(prompt, size),
+                        self._generate_pollinations(prompt, size, seed),
                         timeout=timeout_seconds
                     )
                     return result
                 elif provider == "openai":
                     result = await asyncio.wait_for(
-                        self._generate_openai(prompt, size),
+                        self._generate_openai(prompt, size, character_description),
                         timeout=timeout_seconds
                     )
                     return result
@@ -164,7 +168,7 @@ class ImageService:
         
         return api_key.strip().lower() not in [p.lower() for p in placeholder_values]
     
-    async def _generate_pollinations(self, prompt: str, size: str) -> bytes:
+    async def _generate_pollinations(self, prompt: str, size: str, seed: Optional[int] = None) -> bytes:
         """
         Generate image using Pollinations.ai authenticated API.
         
@@ -176,6 +180,7 @@ class ImageService:
         Args:
             prompt: Image generation prompt
             size: Image size (widthxheight)
+            seed: Optional seed for consistency (same seed + same prompt = same image)
             
         Returns:
             Image bytes
@@ -209,11 +214,16 @@ class ImageService:
             "height": height
         }
         
+        # Add seed if provided (for consistency)
+        if seed is not None:
+            params["seed"] = seed
+        
         headers = {
             "Authorization": f"Bearer {api_key}"
         }
         
-        logger.info(f"Using Pollinations.ai authenticated API (enter.pollinations.ai) with model=flux, size={width}x{height}")
+        seed_info = f", seed={seed}" if seed is not None else ""
+        logger.info(f"Using Pollinations.ai authenticated API (enter.pollinations.ai) with model=flux, size={width}x{height}{seed_info}")
         
         async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
             try:
@@ -276,13 +286,14 @@ class ImageService:
                 logger.error(f"Pollinations.ai HTTP error: {e}")
                 raise RuntimeError(f"Failed to generate image from Pollinations.ai: {e}") from e
     
-    async def _generate_openai(self, prompt: str, size: str) -> bytes:
+    async def _generate_openai(self, prompt: str, size: str, character_description: Optional[str] = None) -> bytes:
         """
         Generate image using OpenAI DALL-E.
         
         Args:
             prompt: Image generation prompt
             size: Image size (must be one of OpenAI's supported sizes)
+            character_description: Optional character description for consistency (appended to prompt)
             
         Returns:
             Image bytes
@@ -296,8 +307,6 @@ class ImageService:
         if not api_key:
             raise ValueError("OPENAI_API_KEY not found in environment")
         
-        client = AsyncOpenAI(api_key=api_key        )
-        
         size_map = {
             "1024x1024": "1024x1024",
             "512x512": "512x512",
@@ -305,24 +314,31 @@ class ImageService:
         }
         dall_e_size = size_map.get(size, "1024x1024")
         
-        response = await client.images.generate(
-            model="dall-e-3",
-            prompt=prompt,
-            # Fix: Make sure size is one of the supported literals for DALL-E
-            size=dall_e_size if dall_e_size in ("1024x1024", "512x512", "256x256") else "1024x1024",
-            quality="standard",
-            n=1,
-            response_format="url"
-        )
+        # Enhance prompt with character description for DALL-E consistency
+        enhanced_prompt = prompt
+        if character_description:
+            enhanced_prompt = f"{prompt} Referencing the character design from this description: {character_description}, maintaining the exact same colors, outfit, and features."
         
-        if not response.data or not response.data[0].url:
-            raise ValueError("No image URL returned from OpenAI")
-        
-        image_url = response.data[0].url
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            img_response = await http_client.get(image_url)
-            img_response.raise_for_status()
-            return img_response.content
+        # Use context manager to ensure client is properly closed
+        async with AsyncOpenAI(api_key=api_key) as client:
+            response = await client.images.generate(
+                model="dall-e-3",
+                prompt=enhanced_prompt,
+                # Fix: Make sure size is one of the supported literals for DALL-E
+                size=dall_e_size if dall_e_size in ("1024x1024", "512x512", "256x256") else "1024x1024",
+                quality="standard",
+                n=1,
+                response_format="url"
+            )
+            
+            if not response.data or not response.data[0].url:
+                raise ValueError("No image URL returned from OpenAI")
+            
+            image_url = response.data[0].url
+            async with httpx.AsyncClient(timeout=30.0) as http_client:
+                img_response = await http_client.get(image_url)
+                img_response.raise_for_status()
+                return img_response.content
     
     async def _generate_mock(self, prompt: str, size: str) -> bytes:
         """

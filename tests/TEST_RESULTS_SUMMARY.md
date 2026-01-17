@@ -138,7 +138,7 @@ Location: `assets/{job_id}/`
 
 ### Main Integration Test (Real APIs - Recommended)
 ```bash
-python test_final_product.py
+python tests/test_final_product.py
 ```
 **Duration:** ~3-5 minutes  
 **Result:** Complete PDF with real AI-generated content using authenticated APIs

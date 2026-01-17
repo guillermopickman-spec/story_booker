@@ -13,209 +13,338 @@
 - ✅ **Full-Page Illustrations**: Complete scene illustrations per page
 - ✅ **PDF Generation**: Professional layout with text overlay
 - ✅ **Progress Tracking**: Real-time job status and progress monitoring
-
----
-
-## 🎯 Next Improvements (Priority Order)
-
-### 🔴 High Priority - Commercial Viability
-
-#### 1. Print-on-Demand (POD) Preflight
-**Goal**: Make PDFs Amazon KDP-ready
-- **CMYK Color Conversion**: Convert RGB images to CMYK color space for print
-- **Bleed Addition**: Add 0.125" (9pt) bleeds on all sides
-- **Margin Compliance**: Ensure proper margins for KDP requirements
-- **Color Profile**: Embed proper ICC color profiles
-- **Impact**: Enables direct publishing to Amazon KDP
-
-#### 2. Vectorized Text Layers
-**Goal**: Ensure text stays crisp at any print resolution
-- **Verify Text Rendering**: Confirm text is rendered as PDF text objects (not rasterized)
-- **Font Embedding**: Ensure fonts are properly embedded
-- **Text Accessibility**: Make text selectable and searchable
-- **Impact**: Professional print quality, accessibility compliance
-
-#### 3. ISBN & Barcode Placeholder
-**Goal**: Reserve space for commercial publishing
-- **Back Cover Layout**: Add reserved space for ISBN barcode (standard dimensions)
-- **Barcode Area**: Create placeholder rectangle on back cover
-- **Positioning**: Follow industry-standard barcode placement
-- **Impact**: Ready for commercial publishing workflow
-
----
-
-### 🟡 Medium Priority - User Experience
-
-#### 4. Writing Style Manager
-**Goal**: Allow users to choose story writing styles
-- **Style Options**: Dr. Seuss, Educational/Factual, Whimsical, Classic Fairy Tale, etc.
-- **System Prompt Templates**: Create style-specific prompts for author agent
-- **API Parameter**: Add `writing_style` parameter to `/generate` endpoint
-- **Impact**: More variety and customization options
-
-#### 5. Trim Size Options
-**Goal**: Support different book formats
-- **Square Format**: 8.5" x 8.5" (common for children's books)
-- **Landscape Format**: 11" x 8.5"
-- **Custom Sizes**: Allow user-defined dimensions
-- **Dynamic Layout**: Adjust PDF layout based on trim size
-- **Impact**: More publishing options, better market fit
-
-#### 6. Web UI
-**Goal**: Make the tool accessible to non-technical users
-- **Frontend Framework**: React/Next.js or Vue.js
-- **Theme Input**: Simple form for story theme
-- **Style Selection**: Visual style picker
-- **Progress Visualization**: Real-time progress bars
-- **Download Interface**: Easy PDF download
-- **Impact**: Broader audience, easier adoption
-
----
-
-### 🟢 Lower Priority - Nice to Have
-
-#### 7. Storybook History & Management
-- User accounts and authentication
-- Storybook library/dashboard
-- Edit/regenerate capabilities
-- Export history
-
-#### 8. Analytics Dashboard
-- Usage statistics
-- Popular themes/styles
-- Generation metrics
-- Performance monitoring
-
-#### 9. Additional Export Formats
-- EPUB format support
-- Print-ready PDF variants
-- Image-only exports
-- Social media formats
-
-#### 10. Advanced Features
-- Custom character uploads
-- Story templates/themes
-- Collaborative editing
-- API rate limiting and quotas
-
----
-
-## 🗺️ Implementation Phases
-
-### Phase 1: KDP Readiness (2-4 weeks)
-**Goal**: Make books commercially viable for Amazon KDP
-
-1. **POD Preflight Implementation**
-   - Create `services/pod_preflight.py`
-   - Implement RGB to CMYK conversion
-   - Add bleed calculation and application
-   - Test with KDP requirements
-
-2. **Text Vectorization Verification**
-   - Audit current PDF generation
-   - Ensure FPDF2 renders text as vectors
-   - Add font embedding if needed
-   - Test at various resolutions
-
-3. **ISBN Barcode Placeholder**
-   - Update back cover layout in `pdf_generator.py`
-   - Add barcode placeholder rectangle
-   - Position according to industry standards
-
-**Deliverable**: KDP-ready PDFs that pass Amazon's validation
-
----
-
-### Phase 2: Enhanced User Experience (4-6 weeks)
-**Goal**: Improve usability and customization
-
-1. **Writing Style Manager**
-   - Create style templates in `services/author_agent.py`
-   - Add `writing_style` parameter to API
-   - Test different styles
-
-2. **Trim Size Support**
-   - Refactor `pdf_generator.py` for dynamic sizing
-   - Add trim size parameter to API
-   - Update layout calculations
-
-3. **Basic Web UI**
-   - Set up frontend project (React/Next.js)
-   - Create theme input form
-   - Add style/parameter selectors
-   - Implement progress tracking UI
-   - Add download functionality
-
-**Deliverable**: User-friendly web interface with customization options
-
----
-
-### Phase 3: Advanced Features (Ongoing)
-**Goal**: Add enterprise and advanced features
-
-1. **User Management**
-   - Authentication system
-   - User accounts
-   - Storybook library
-
-2. **Analytics & Monitoring**
-   - Usage tracking
-   - Performance metrics
-   - Error monitoring
-
-3. **Additional Formats**
-   - EPUB generation
-   - Alternative PDF formats
-   - Image exports
-
-**Deliverable**: Full-featured platform
-
----
-
-## 📝 Technical Notes
-
-### Current Architecture
-- **Backend**: FastAPI (async)
-- **LLM**: Multi-provider (Groq, OpenAI, GPT4All)
-- **Images**: Pollinations.ai, OpenAI DALL-E
-- **PDF**: FPDF2
-- **Storage**: Local file system (assets/, output/)
-
-### Key Services
-- `author_agent.py`: Story generation
-- `art_director_agent.py`: Image prompt generation
-- `character_service.py`: Character consistency
-- `image_service.py`: Image generation
-- `pdf_generator.py`: PDF layout and generation
-- `llm_client.py`: Multi-provider LLM client
-
-### Future Considerations
-- **Database**: Consider PostgreSQL for job history
-- **Cloud Storage**: S3/CloudFlare R2 for assets
-- **Queue System**: Redis/Celery for job processing
-- **Caching**: Redis for API responses
-- **CDN**: For serving generated PDFs
+- ✅ **POD-Ready Mode**: CMYK conversion and print bleeds (partially implemented)
 
 ---
 
 ## 🎯 Strategic Direction
 
-### Recommended Path: Hybrid Approach
+### Primary Focus: **Web Frontend** → **Local Providers (Optional)** → **Shared Worlds** (Future)
 
-**Phase 1 (2-4 weeks)**: KDP-Ready
-- Focus on POD preflight and commercial viability
-- Test with real KDP uploads
-- Create simple workflow documentation
+**Phase 1 (Now)**: Build **web frontend application** that uses existing FastAPI backend
+- Modern web UI for storybook creation
+- Real-time progress tracking
+- PDF preview and download
+- Keep using APIs for now (Groq for stories, Pollinations/DALL-E for images)
+- Configuration presets for repeatable workflows
+- POD-ready output for commercial publishing
 
-**Phase 2 (4-6 weeks)**: Web UI
-- Build user-friendly interface
-- Keep FastAPI backend
-- Enable direct KDP-ready downloads
+**Phase 2 (Later)**: Add **optional local providers** for privacy/offline use
+- Stable Diffusion integration for local image generation
+- GPT4All option for local story generation (keep API as default since it's almost free)
+- Provider selection in UI (API vs Local)
+- Fallback system (API → Local if available)
 
-**Phase 3 (Ongoing)**: Monetization
-- Free tier: 1 book/month
-- Paid tier: Unlimited + premium features
-- Future: KDP auto-upload integration
+**Phase 3 (Much Later)**: **Anthologies & Shared Worlds**
+- Character libraries across books
+- Shared environments/universes
+- Cross-story consistency
+- World-building tools
+
+---
+
+## 🔴 Phase 1: Web Frontend Application (Next 4-8 weeks)
+
+**Goal**: Create a professional web application with beautiful UI for generating commercial-grade storybooks
+
+### Current Provider Strategy (Phase 1)
+- **Stories**: Use API providers (Groq - fast and free, OpenAI - premium)
+- **Images**: Use API providers (Pollinations.ai - default, DALL-E - premium)
+- **Reasoning**: APIs are fast, reliable, and cost-effective (Groq is nearly free)
+
+### 1. Web Frontend UI 🌐
+**Priority: HIGH**
+- **Frontend Framework**: React/Next.js or Vue.js/Nuxt.js (recommend Next.js for SSR)
+- **UI Components**: Modern component library (Shadcn/ui, Tailwind UI, or Material-UI)
+- **Theme Input**: Rich text editor or simple textarea for story theme
+- **Parameter Selectors**: 
+  - Dropdown for art style (CLAYMATION, VINTAGE_SKETCH, etc.)
+  - Number of pages slider (1-10)
+  - Language selector (multi-select: English, Spanish)
+  - POD-ready toggle
+  - Trim size selector (Square, Standard, Landscape)
+- **Real-time Progress**: Live progress bars with step-by-step status
+- **PDF Preview**: In-browser PDF viewer (PDF.js)
+- **Download Interface**: Easy PDF download with organized file naming
+- **File**: `frontend/` directory (separate or monorepo structure)
+
+**Example UI Flow:**
+1. User enters theme: "A brave mouse adventure"
+2. Selects: Style=CLAYMATION, Pages=5, POD-ready=true
+3. Clicks "Generate Storybook"
+4. Shows progress: "Generating story... 15%" with real-time updates
+5. When complete: Shows PDF preview + download button
+
+### 2. Backend API Enhancements 🔌
+**Priority: HIGH**
+- **WebSocket Support**: Real-time progress updates (optional, can use polling)
+- **CORS Configuration**: Proper CORS setup for frontend domain
+- **API Response Format**: Standardized JSON responses
+- **Error Handling**: User-friendly error messages
+- **File**: Update `src/main.py`, add WebSocket endpoint if needed
+
+**Endpoints to Add/Enhance:**
+- `POST /api/generate` - Already exists, ensure good error handling
+- `GET /api/status/{job_id}` - Already exists, optimize for polling
+- `GET /api/download/{job_id}` - Already exists
+- `WS /api/status/{job_id}/stream` - (Optional) WebSocket for real-time updates
+
+### 3. Complete POD Preflight System 🖨️
+**Priority: HIGH** (Partially implemented, needs completion)
+- **CMYK Conversion**: Full RGB→CMYK conversion for all images
+- **Print Bleeds**: Ensure 0.125" bleeds on all pages (currently implemented)
+- **KDP Validation**: Pre-upload validation checks (page count, dimensions, margins)
+- **Color Profile Embedding**: Embed ICC profiles for accurate printing
+- **Validation Report**: Generate KDP validation report (JSON/HTML)
+- **File**: `services/pod_preflight.py` (enhance existing)
+
+**Features:**
+- Validate PDF meets KDP requirements before export
+- Generate KDP validation report (shown in UI)
+- Support multiple trim sizes (square 8.5x8.5, standard 8.5x11, etc.)
+- Display validation results in frontend
+
+### 4. Configuration Presets System 📋
+**Priority: MEDIUM**
+- **Preset Storage**: Backend stores presets (database or JSON files)
+- **Preset API Endpoints**: 
+  - `GET /api/presets` - List available presets
+  - `POST /api/presets` - Create new preset
+  - `PUT /api/presets/{id}` - Update preset
+  - `DELETE /api/presets/{id}` - Delete preset
+- **Built-in Presets**: KDP Square, KDP Standard, Print-Ready, Digital-Only
+- **UI Preset Manager**: Frontend UI for creating/editing presets
+- **Preset Application**: One-click preset application in generation form
+- **File**: `services/preset_manager.py`, `src/main.py` (preset endpoints)
+
+**Example Preset:**
+```json
+{
+  "name": "KDP Square Children's",
+  "trim_size": "8.5x8.5",
+  "pod_ready": true,
+  "style": "CLAYMATION",
+  "writing_style": "whimsical",
+  "min_pages": 24,
+  "max_pages": 32,
+  "languages": ["en"]
+}
+```
+
+### 5. Writing Style Manager ✍️
+**Priority: MEDIUM**
+- **Style Templates**: Dr. Seuss, Educational, Whimsical, Classic, Modern
+- **System Prompt Injection**: Style-specific prompts for author agent
+- **UI Selector**: Dropdown in frontend for writing style
+- **API Parameter**: Add `writing_style` parameter to `/api/generate`
+- **File**: `services/writing_styles.py`, update `author_agent.py`, update `src/main.py`
+
+**Styles to Implement:**
+- `whimsical`: Playful, rhyming, fun
+- `educational`: Factual, informative, age-appropriate
+- `classic`: Traditional fairy tale style
+- `seuss`: Dr. Seuss-inspired rhyming
+- `modern`: Contemporary, relatable
+
+### 6. Trim Size & Layout Options 📐
+**Priority: MEDIUM**
+- **Multiple Trim Sizes**: Square (8.5×8.5"), Standard (8.5×11"), Landscape (11×8.5"), Custom
+- **UI Selector**: Dropdown with visual preview or dimensions
+- **Dynamic Layouts**: Auto-adjust text/image placement per trim size
+- **API Parameter**: Add `trim_size` parameter to `/api/generate`
+- **File**: Update `services/pdf_generator.py`, update `src/main.py`
+
+### 7. Quality Control & Reporting 📊
+**Priority: MEDIUM**
+- **Generation Report**: JSON report per book (character count, word count, pages, images)
+- **Quality Checks**: Validate story coherence, image quality, character consistency
+- **UI Display**: Show quality report in frontend after generation
+- **Export Options**: Download report as JSON/HTML
+- **File**: `services/quality_report.py`, frontend report component
+
+### 8. Job History & Management 💾
+**Priority: LOW** (Can be simple for now, full DB later)
+- **In-Memory Job History**: Keep job list in memory (or simple JSON file)
+- **Job Listing**: `GET /api/jobs` - List recent jobs
+- **Job Details**: `GET /api/jobs/{job_id}` - Full job details
+- **Job Cleanup**: Old job cleanup (older than X days)
+- **UI Job History**: Simple list of past generations in frontend
+- **File**: Update `src/main.py`, frontend history component
+
+---
+
+## 🟡 Phase 2: Optional Local Providers (Future)
+
+**Goal**: Add local provider support for privacy-sensitive or offline workflows
+
+### Provider Strategy (Phase 2)
+- **Stories**: Keep API as default (Groq is nearly free), add GPT4All as optional local option
+- **Images**: Add Stable Diffusion as local option, keep Pollinations/DALL-E as default
+- **UI Toggle**: Provider selection in frontend (API vs Local)
+
+### 1. Stable Diffusion Integration 🎨
+**Priority: MEDIUM** (When local needed)
+- **Local SD Installation**: Support for local Stable Diffusion (A1111, ComfyUI, or direct)
+- **SD API Client**: Interface with local SD instance
+- **Model Support**: Support for common SD models (SDXL, etc.)
+- **Seed Management**: Use same seed system for character consistency
+- **Provider Selection**: UI toggle between API and Local for images
+- **File**: `services/image_service.py` (add SD provider), `services/sd_client.py`
+
+### 2. GPT4All Integration (Optional) 📚
+**Priority: LOW** (API is almost free, so this is optional)
+- **Local Model Loading**: Support GPT4All models
+- **Model Selection**: UI for selecting local model
+- **Provider Selection**: UI toggle between API (default) and Local for stories
+- **File**: `services/llm_client.py` (already has GPT4All support, just needs UI)
+
+### 3. Provider Selection UI 🔄
+**Priority: MEDIUM**
+- **Provider Toggle**: Radio buttons or dropdowns for each service
+  - Story Generation: Groq (API - Recommended) | OpenAI (API) | GPT4All (Local)
+  - Image Generation: Pollinations (API - Recommended) | DALL-E (API) | Stable Diffusion (Local)
+- **Provider Status**: Show if local providers are available/configured
+- **Fallback Logic**: Auto-fallback if local provider fails
+
+---
+
+## 🟢 Phase 3: Anthologies & Shared Worlds (Much Later)
+
+**Goal**: Enable multi-book series with shared characters and environments
+
+### 1. Character Library System
+- Save characters to reusable library
+- Reference characters across multiple books
+- Character evolution/aging tracking
+- Visual consistency across series
+- Character browser in frontend
+
+### 2. Environment/World Builder
+- Define shared settings/locations
+- Consistent art style per world
+- World rules and constraints
+- Environment reference images
+- World management UI
+
+### 3. Anthology Generator
+- Multiple stories in one book
+- Shared universe consistency
+- Series numbering and metadata
+- Table of contents generation
+
+### 4. Cross-Story Features
+- Character appearance tracking
+- Story continuity checker
+- Timeline management
+- Series overview dashboard
+
+---
+
+## 📝 Technical Implementation Notes
+
+### Current Architecture
+- **Backend**: FastAPI (async) - Continue using, enhance for frontend
+- **LLM**: Multi-provider (Groq, OpenAI, GPT4All) - Keep API as default
+- **Images**: Pollinations.ai (default), OpenAI DALL-E (premium), Stable Diffusion (future local)
+- **PDF**: FPDF2 (consider upgrading to ReportLab for better POD support)
+- **Storage**: Local file system (assets/, output/) - Can migrate to cloud later
+
+### Frontend Stack Options
+
+**Option A: Next.js (Recommended)**
+- React with SSR/SSG
+- Great for SEO and performance
+- Easy API integration
+- Modern tooling (TypeScript, Tailwind CSS)
+
+**Option B: Vue.js/Nuxt.js**
+- Simpler learning curve
+- Great reactivity
+- Good ecosystem
+
+**Option C: React SPA**
+- Simple Create React App or Vite
+- Fast development
+- No SSR complexity
+
+### Key Services to Enhance/Add
+
+**Phase 1 (Frontend):**
+- `frontend/` - Frontend application directory
+- `services/pod_preflight.py` - Complete POD validation
+- `services/preset_manager.py` - Configuration preset handling
+- `services/writing_styles.py` - Writing style templates
+- `services/quality_report.py` - Quality control and reporting
+- `src/main.py` - Add preset endpoints, enhance error handling
+
+**Phase 2 (Local Providers - Future):**
+- `services/sd_client.py` - Stable Diffusion client
+- Update `services/image_service.py` - Add SD provider
+- Update `services/llm_client.py` - Enhanced GPT4All support
+
+### Frontend Structure (Next.js Example)
+```
+frontend/
+├── app/                          # Next.js app directory
+│   ├── page.tsx                  # Home page (generation form)
+│   ├── jobs/[id]/
+│   │   └── page.tsx             # Job status page
+│   └── api/                     # API routes (if needed)
+├── components/
+│   ├── GenerationForm.tsx       # Main generation form
+│   ├── ProgressTracker.tsx      # Progress display
+│   ├── PDFPreview.tsx           # PDF viewer
+│   ├── PresetManager.tsx        # Preset UI
+│   └── JobHistory.tsx           # Job history list
+├── lib/
+│   ├── api.ts                   # API client functions
+│   └── types.ts                 # TypeScript types
+├── styles/
+│   └── globals.css              # Global styles
+└── package.json
+```
+
+### Dependencies to Add
+
+**Frontend:**
+- `next` or `react` + `vite` or `vue` + `nuxt`
+- `axios` or `fetch` for API calls
+- `pdfjs-dist` for PDF preview
+- `tailwindcss` or similar for styling
+- `shadcn/ui` or `@headlessui/react` for components
+
+**Backend:**
+- `python-socketio` (optional) - For WebSocket support
+- `pyyaml` - For preset file parsing (if using YAML)
+- `reportlab` (optional) - Enhanced PDF generation for POD
+
+---
+
+## 🚀 Immediate Next Steps (Week 1-2)
+
+1. **Set Up Frontend Project** (Priority 1)
+   - Initialize Next.js (or chosen framework) project
+   - Set up project structure
+   - Configure API client for FastAPI backend
+   - Create basic generation form component
+
+2. **Build Generation Form UI** (Priority 2)
+   - Theme input field
+   - Parameter selectors (pages, style, language, POD-ready)
+   - Submit button with loading state
+   - Basic error handling display
+
+3. **Implement Progress Tracking** (Priority 3)
+   - Poll `/api/status/{job_id}` endpoint
+   - Display progress bar with steps
+   - Show current step message
+   - Handle completion and errors
+
+4. **Complete POD Preflight** (Priority 4)
+   - Verify CMYK conversion works correctly
+   - Test bleeds on all pages
+   - Add KDP validation checks
+   - Display validation results in UI
 
 ---
 
@@ -231,12 +360,54 @@
 - `num_pages`: Number of pages (1-10, default: 5)
 - `style`: Art style (CLAYMATION, VINTAGE_SKETCH, etc.)
 - `languages`: List of languages (["en"], ["es"], ["en", "es"])
+- `pod_ready`: Enable POD preflight (CMYK, bleeds) ✅
 
-### Planned Parameters
-- `writing_style`: Story writing style (Dr. Seuss, Educational, etc.)
-- `trim_size`: Book dimensions (square, landscape, custom)
-- `pod_ready`: Enable POD preflight (CMYK, bleeds)
+### Planned API Endpoints (Phase 1)
+- `GET /api/presets` - List available presets
+- `POST /api/presets` - Create new preset
+- `PUT /api/presets/{id}` - Update preset
+- `DELETE /api/presets/{id}` - Delete preset
+- `GET /api/jobs` - List recent jobs
+- `GET /api/jobs/{job_id}` - Get job details
+- `WS /api/status/{job_id}/stream` - (Optional) WebSocket for real-time updates
+
+### Planned Parameters (Phase 1)
+- `writing_style`: Story writing style (whimsical, educational, etc.)
+- `trim_size`: Book dimensions (square, standard, custom)
+- `preset_id`: Use configuration preset
+
+### Provider Strategy Summary
+
+**Phase 1 (Now):**
+- Stories: **Groq API** (fast, free) - Primary
+- Stories: **OpenAI API** (premium) - Fallback
+- Images: **Pollinations.ai API** (default)
+- Images: **DALL-E API** (premium option)
+
+**Phase 2 (Later - Optional):**
+- Stories: Keep API as default, add **GPT4All (local)** as option
+- Images: Keep API as default, add **Stable Diffusion (local)** as option
+- UI allows switching between API and Local providers
 
 ---
 
-*Last Updated: v0.2.0*
+## 🎯 Success Metrics for Phase 1
+
+### Web Frontend Readiness
+- ✅ Beautiful, intuitive UI for storybook generation
+- ✅ Real-time progress tracking with clear status messages
+- ✅ PDF preview in browser
+- ✅ Easy download functionality
+- ✅ Preset system for repeatable configurations
+- ✅ Mobile-responsive design
+
+### Commercial Viability
+- ✅ PDFs ready for Amazon KDP upload
+- ✅ POD validation reports shown in UI
+- ✅ Multiple trim sizes supported
+- ✅ Professional quality reports
+- ✅ User-friendly experience
+
+---
+
+*Last Updated: v0.4.0 - Revised for Web Frontend focus with API providers*

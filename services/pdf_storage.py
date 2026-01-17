@@ -19,33 +19,38 @@ def ensure_output_directory() -> Path:
     return output_dir
 
 
-def get_pdf_path(job_id: str) -> Path:
+def get_pdf_path(job_id: str, language: Optional[str] = None) -> Path:
     """
     Get the file path for a PDF storybook.
     
     Args:
         job_id: Unique job identifier
+        language: Optional language code (e.g., "en", "es") to include in filename
         
     Returns:
         Path object for the PDF file
     """
     output_dir = ensure_output_directory()
-    filename = f"{job_id}.pdf"
+    if language:
+        filename = f"{job_id}_{language}.pdf"
+    else:
+        filename = f"{job_id}.pdf"
     return output_dir / filename
 
 
-def save_pdf(job_id: str, pdf_data: bytes) -> str:
+def save_pdf(job_id: str, pdf_data: bytes, language: Optional[str] = None) -> str:
     """
     Save PDF data to file.
     
     Args:
         job_id: Unique job identifier
         pdf_data: PDF file bytes
+        language: Optional language code (e.g., "en", "es") to include in filename
         
     Returns:
         String path to saved PDF file (absolute path)
     """
-    pdf_path = get_pdf_path(job_id)
+    pdf_path = get_pdf_path(job_id, language)
     
     with open(pdf_path, 'wb') as f:
         f.write(pdf_data)

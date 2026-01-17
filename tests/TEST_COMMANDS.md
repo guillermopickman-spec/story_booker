@@ -5,12 +5,12 @@
 ### PowerShell - Final Product Test (Recommended)
 ```powershell
 cd c:\Users\Guill\Desktop\SCRIPTING\Story_Booker\SB_0.0.1
-python test_final_product.py
+python tests/test_final_product.py
 ```
 
 ### One-Line PowerShell Command
 ```powershell
-cd c:\Users\Guill\Desktop\SCRIPTING\Story_Booker\SB_0.0.1; python test_final_product.py
+cd c:\Users\Guill\Desktop\SCRIPTING\Story_Booker\SB_0.0.1; python tests/test_final_product.py
 ```
 
 ### Quick Mock Test (No API Calls)

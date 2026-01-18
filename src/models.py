@@ -3,6 +3,7 @@ Pydantic models for Story Booker application.
 """
 
 from typing import List, Optional, Dict
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -50,3 +51,19 @@ class ImagePrompt(BaseModel):
     """Represents an image generation prompt for a sticker."""
     prompt: str
     subject: str
+
+
+class CharacterMetadata(BaseModel):
+    """Represents character metadata for storage, includes tags and timestamps."""
+    name: str
+    species: Optional[str] = None
+    physical_description: str
+    key_features: List[str] = []
+    color_palette: Optional[Dict[str, Optional[str]]] = None
+    tags: List[str] = []
+    created_at: str
+    updated_at: str
+    seed: Optional[int] = None
+    refined_prompt: Optional[str] = None
+    character_id: Optional[str] = None  # Added when loading from storage
+    has_image: Optional[bool] = None  # Added when loading from storage

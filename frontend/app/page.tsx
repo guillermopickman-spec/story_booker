@@ -7,7 +7,8 @@ import { PDFPreview } from "@/components/PDFPreview"
 import { Alert } from "@/components/ui/alert"
 import { createJob } from "@/lib/api"
 import { JobStatus } from "@/lib/types"
-import { BookOpen, Sparkles } from "lucide-react"
+import { BookOpen, Sparkles, UserPlus } from "lucide-react"
+import Link from "next/link"
 
 type ViewState = "form" | "progress" | "preview"
 
@@ -30,6 +31,7 @@ export default function Home() {
         style: data.style,
         languages: data.languages,
         pod_ready: data.pod_ready,
+        character_ids: data.character_ids,
       })
 
       setJobId(response.job_id)
@@ -80,15 +82,25 @@ export default function Home() {
                 <p className="text-xs text-gray-600">AI-Powered Storybook Generator</p>
               </div>
             </div>
-            {viewState !== "form" && (
-              <button
-                onClick={handleNewStorybook}
-                className="px-4 py-2 text-sm font-semibold text-[#6366f1] hover:text-[#5855eb] transition-colors flex items-center gap-2"
-              >
-                <Sparkles className="h-4 w-4" />
-                New Storybook
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              <Link href="/characters">
+                <button
+                  className="px-4 py-2 text-sm font-semibold text-[#6366f1] hover:text-[#5855eb] transition-colors flex items-center gap-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Characters
+                </button>
+              </Link>
+              {viewState !== "form" && (
+                <button
+                  onClick={handleNewStorybook}
+                  className="px-4 py-2 text-sm font-semibold text-[#6366f1] hover:text-[#5855eb] transition-colors flex items-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  New Storybook
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>

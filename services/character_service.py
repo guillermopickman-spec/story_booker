@@ -6,7 +6,7 @@ import json
 import hashlib
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Set
 from services.llm_client import LLMClient, get_llm_client
 from services.image_service import ImageService, get_image_service
 from services.image_storage import ensure_job_directory, save_image
@@ -492,6 +492,9 @@ async def generate_character_reference_image(
     if image_service is None:
         image_service = get_image_service()
     
+    # Type assertion: get_image_service always returns a non-None ImageService
+    assert image_service is not None, "get_image_service should always return a valid ImageService"
+    
     # Generate deterministic seed from character name (hash)
     seed = int(hashlib.md5(character.name.encode()).hexdigest()[:8], 16) % (2**31)
     
@@ -587,6 +590,93 @@ def match_character_to_subject(subject: str, characters: List[Character]) -> Opt
     return None
 
 
+def match_characters_by_similarity(extracted_char: Character, stored_chars: List[Character]) -> Optional[Character]:
+    """
+    Match an extracted character with stored characters based on species, description, and key features similarity.
+    Used to avoid duplicate character generation when a stored character matches an extracted one.
+    
+    Args:
+        extracted_char: Character extracted from the story
+        stored_chars: List of stored Character objects to match against
+        
+    Returns:
+        Best matching stored Character object, or None if no good match found
+    """
+    if not stored_chars:
+        return None
+    
+    best_match = None
+    best_score = 0.0
+    
+    extracted_species_lower = extracted_char.species.lower() if extracted_char.species else None
+    extracted_desc_lower = extracted_char.physical_description.lower() if extracted_char.physical_description else ""
+    extracted_features = set(f.lower() for f in extracted_char.key_features) if extracted_char.key_features else set()
+    extracted_name_lower = extracted_char.name.lower()
+    
+    # Extract keywords from description (simple word-based approach)
+    # Remove common stop words and get meaningful keywords
+    stop_words = {"the", "a", "an", "is", "are", "with", "and", "or", "but", "has", "have", "had", "was", "were", "be", "been", "being"}
+    extracted_desc_words = set(
+        word.lower() 
+        for word in re.findall(r'\b\w+\b', extracted_desc_lower) 
+        if len(word) > 3 and word.lower() not in stop_words
+    )
+    
+    for stored_char in stored_chars:
+        score = 0.0
+        
+        stored_species_lower = stored_char.species.lower() if stored_char.species else None
+        stored_desc_lower = stored_char.physical_description.lower() if stored_char.physical_description else ""
+        stored_features = set(f.lower() for f in stored_char.key_features) if stored_char.key_features else set()
+        stored_name_lower = stored_char.name.lower()
+        
+        # 1. Species match (highest priority - 40 points)
+        if extracted_species_lower and stored_species_lower:
+            if extracted_species_lower == stored_species_lower:
+                score += 40.0
+            elif extracted_species_lower in stored_species_lower or stored_species_lower in extracted_species_lower:
+                score += 30.0
+        
+        # 2. Name similarity (30 points if similar)
+        if extracted_name_lower == stored_name_lower:
+            score += 30.0
+        elif extracted_name_lower in stored_name_lower or stored_name_lower in extracted_name_lower:
+            score += 15.0
+        
+        # 3. Key features overlap (20 points)
+        if extracted_features and stored_features:
+            overlap = len(extracted_features & stored_features)
+            total = len(extracted_features | stored_features)
+            if total > 0:
+                feature_similarity = overlap / total
+                score += 20.0 * feature_similarity
+        
+        # 4. Description keyword overlap (10 points)
+        if extracted_desc_words:
+            stored_desc_words = set(
+                word.lower() 
+                for word in re.findall(r'\b\w+\b', stored_desc_lower) 
+                if len(word) > 3 and word.lower() not in stop_words
+            )
+            if stored_desc_words:
+                overlap = len(extracted_desc_words & stored_desc_words)
+                total = len(extracted_desc_words | stored_desc_words)
+                if total > 0:
+                    desc_similarity = overlap / total
+                    score += 10.0 * desc_similarity
+        
+        # Track best match
+        if score > best_score:
+            best_score = score
+            best_match = stored_char
+    
+    # Only return match if similarity score is high enough (threshold: 40 = species match or strong name match)
+    if best_score >= 40.0:
+        return best_match
+    
+    return None
+
+
 def get_character_refined_prompt(character: Character) -> str:
     """
     Get the refined prompt for a character. Creates it if it doesn't exist.
@@ -605,17 +695,24 @@ def get_character_refined_prompt(character: Character) -> str:
         return create_refined_character_prompt(character)
 
 
-def ensure_characters_in_beats(storybook: StoryBook, characters: List[Character]) -> None:
+def ensure_characters_in_beats(storybook: StoryBook, characters: List[Character], selected_character_names: Optional[Set[str]] = None) -> None:
     """
     Ensure main characters appear in sticker_subjects when mentioned in story text.
     Updates beats in place to add missing main characters to sticker_subjects.
     
+    Selected characters (those in selected_character_names) will always appear in at least the first beat,
+    even if not mentioned in the story text.
+    
     Args:
         storybook: StoryBook object to update
         characters: List of main characters
+        selected_character_names: Optional set of selected character names (lowercase) that should always appear
     """
     if not characters:
         return
+    
+    # Normalize selected character names to lowercase
+    selected_names_lower = set(name.lower() for name in selected_character_names) if selected_character_names else set()
     
     # Create lookup dictionaries for character names and species
     char_names_lower = {char.name.lower(): char for char in characters}
@@ -624,7 +721,7 @@ def ensure_characters_in_beats(storybook: StoryBook, characters: List[Character]
         if char.species:
             char_species_lower[char.species.lower()] = char
     
-    for beat in storybook.beats:
+    for beat_idx, beat in enumerate(storybook.beats):
         beat_text_lower = beat.text.lower()
         existing_subjects_lower = [s.lower() for s in beat.sticker_subjects]
         
@@ -632,6 +729,7 @@ def ensure_characters_in_beats(storybook: StoryBook, characters: List[Character]
         for character in characters:
             char_name_lower = character.name.lower()
             char_species_lower_val = character.species.lower() if character.species else None
+            is_selected = char_name_lower in selected_names_lower
             
             # Check if character is mentioned in text
             mentioned = False
@@ -647,8 +745,11 @@ def ensure_characters_in_beats(storybook: StoryBook, characters: List[Character]
                 if re.search(pattern, beat_text_lower):
                     mentioned = True
             
-            # If mentioned, ensure character or species is in sticker_subjects
-            if mentioned:
+            # Selected characters should appear in first beat even if not mentioned
+            # or if mentioned in any beat, include them
+            should_include = mentioned or (is_selected and beat_idx == 0)
+            
+            if should_include:
                 # Check if already in subjects (by name or species)
                 already_included = False
                 for subject in beat.sticker_subjects:

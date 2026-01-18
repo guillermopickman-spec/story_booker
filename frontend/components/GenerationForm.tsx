@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -13,8 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ART_STYLES, LANGUAGES } from "@/lib/constants"
-import { ArtStyle, Language } from "@/lib/types"
-import { Sparkles } from "lucide-react"
+import { ArtStyle, Language, CharacterMetadata } from "@/lib/types"
+import { getCharacters, getCharacterImageUrl } from "@/lib/api"
+import { Sparkles, UserPlus } from "lucide-react"
+import Link from "next/link"
 
 const formSchema = z.object({
   theme: z.string().optional(),
@@ -22,6 +24,7 @@ const formSchema = z.object({
   style: z.string().optional(),
   languages: z.array(z.enum(["en", "es"])).min(1, "Select at least one language"),
   pod_ready: z.boolean(),
+  character_ids: z.array(z.string()).optional(),
 })
 
 export type GenerationFormData = z.infer<typeof formSchema>
@@ -34,6 +37,10 @@ interface GenerationFormProps {
 export function GenerationForm({ onSubmit, isLoading = false }: GenerationFormProps) {
   const [numPages, setNumPages] = useState(5)
   const [selectedLanguages, setSelectedLanguages] = useState<Language[]>(["en"])
+  const [characters, setCharacters] = useState<CharacterMetadata[]>([])
+  const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([])
+  const [loadingCharacters, setLoadingCharacters] = useState(false)
+  const [charactersError, setCharactersError] = useState<string | null>(null)
 
   const {
     register,
@@ -54,6 +61,24 @@ export function GenerationForm({ onSubmit, isLoading = false }: GenerationFormPr
 
   const podReady = watch("pod_ready")
 
+  useEffect(() => {
+    const loadCharacters = async () => {
+      try {
+        setLoadingCharacters(true)
+        setCharactersError(null)
+        const data = await getCharacters()
+        setCharacters(data)
+      } catch (err) {
+        console.error("Failed to load characters:", err)
+        const errorMessage = err instanceof Error ? err.message : "Failed to load characters"
+        setCharactersError(errorMessage)
+      } finally {
+        setLoadingCharacters(false)
+      }
+    }
+    loadCharacters()
+  }, [])
+
   const toggleLanguage = (language: Language) => {
     const current = selectedLanguages
     const newLanguages = current.includes(language)
@@ -63,8 +88,19 @@ export function GenerationForm({ onSubmit, isLoading = false }: GenerationFormPr
     setValue("languages", newLanguages, { shouldValidate: true })
   }
 
+  const toggleCharacter = (characterId: string) => {
+    const current = selectedCharacterIds
+    const newIds = current.includes(characterId)
+      ? current.filter((id) => id !== characterId)
+      : [...current, characterId]
+    setSelectedCharacterIds(newIds)
+  }
+
   const onFormSubmit = (data: GenerationFormData) => {
-    onSubmit(data)
+    onSubmit({
+      ...data,
+      character_ids: selectedCharacterIds.length > 0 ? selectedCharacterIds : undefined,
+    })
   }
 
   return (
@@ -164,6 +200,118 @@ export function GenerationForm({ onSubmit, isLoading = false }: GenerationFormPr
             </div>
             {errors.languages && (
               <p className="text-sm text-red-600">{errors.languages.message}</p>
+            )}
+          </div>
+
+          {/* Character Selection */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-base">Select Characters (Optional)</Label>
+              <Link href="/characters">
+                <Button variant="outline" size="sm" type="button">
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Manage Characters
+                </Button>
+              </Link>
+            </div>
+            {loadingCharacters ? (
+              <p className="text-sm text-gray-500">Loading characters...</p>
+            ) : charactersError ? (
+              <div className="p-4 rounded-xl bg-red-50 border-2 border-red-200 text-center">
+                <p className="text-sm text-red-700 font-semibold mb-2">Error loading characters</p>
+                <p className="text-xs text-red-600 mb-3">{charactersError}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  type="button"
+                  onClick={() => {
+                    setCharactersError(null)
+                    const loadCharacters = async () => {
+                      try {
+                        setLoadingCharacters(true)
+                        const data = await getCharacters()
+                        setCharacters(data)
+                      } catch (err) {
+                        const errorMessage = err instanceof Error ? err.message : "Failed to load characters"
+                        setCharactersError(errorMessage)
+                      } finally {
+                        setLoadingCharacters(false)
+                      }
+                    }
+                    loadCharacters()
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : characters.length === 0 ? (
+              <div className="p-4 rounded-xl bg-gray-50 border-2 border-gray-200 text-center">
+                <p className="text-sm text-gray-600 mb-2">No characters created yet</p>
+                <Link href="/characters">
+                  <Button variant="outline" size="sm" type="button">
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Create Your First Character
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-48 overflow-y-auto p-2 border-2 border-gray-200 rounded-lg">
+                {characters.map((character) => {
+                  const isSelected = selectedCharacterIds.includes(character.character_id || "")
+                  const imageUrl = character.character_id
+                    ? getCharacterImageUrl(character.character_id)
+                    : null
+
+                  return (
+                    <div
+                      key={character.character_id}
+                      className={`relative cursor-pointer rounded-lg border-2 transition-all ${
+                        isSelected
+                          ? "border-[#6366f1] bg-purple-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                      onClick={() => {
+                        if (character.character_id) {
+                          toggleCharacter(character.character_id)
+                        }
+                      }}
+                    >
+                      <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
+                        {character.has_image && imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={character.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none"
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <UserPlus className="h-8 w-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs font-semibold truncate">{character.name}</p>
+                        {character.species && (
+                          <p className="text-xs text-gray-500 truncate">{character.species}</p>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 w-4 h-4 bg-[#6366f1] rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {selectedCharacterIds.length > 0 && (
+              <p className="text-xs text-gray-500">
+                {selectedCharacterIds.length} character(s) selected
+              </p>
             )}
           </div>
 

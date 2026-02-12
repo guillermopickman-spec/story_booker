@@ -1,0 +1,67 @@
+{
+  "1": {
+    "inputs": {
+      "seed": 42,
+      "steps": 20,
+      "cfg": 7,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": ["2", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0]
+    },
+    "class_type": "KSampler"
+  },
+  "2": {
+    "inputs": {"ckpt_name": "juggernautXL_ragnarokBy.safetensors"},
+    "class_type": "CheckpointLoaderSimple"
+  },
+  "3": {
+    "inputs": {"text": "a brave warrior with a sword, character sheet, full body, white background, storybook watercolor style", "clip": ["2", 1]},
+    "class_type": "CLIPTextEncode"
+  },
+  "4": {
+    "inputs": {"text": "text, watermark, blurry, low quality", "clip": ["2", 1]},
+    "class_type": "CLIPTextEncode"
+  },
+  "5": {
+    "inputs": {"width": 512, "height": 512, "batch_size": 1},
+    "class_type": "EmptyLatentImage"
+  },
+  "6": {
+    "inputs": {
+      "samples": ["1", 0],
+      "vae": ["2", 2]
+    },
+    "class_type": "VAEDecode"
+  },
+  "7": {
+    "inputs": {
+      "filename_prefix": "character",
+      "images": ["6", 0]
+    },
+    "class_type": "SaveImage"
+  },
+  "8": {
+    "inputs": {
+      "lora_name": "StorybookRedmondV2-KidsBook-KidsRedmAF.safetensors",
+      "strength_model": 1,
+      "strength_clip": 1,
+      "model": ["2", 0],
+      "clip": ["2", 1]
+    },
+    "class_type": "LoraLoader"
+  },
+  "9": {
+    "inputs": {
+      "lora_name": "wai-A3-V140.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
+      "model": ["8", 0],
+      "clip": ["8", 1]
+    },
+    "class_type": "LoraLoader"
+  }
+}
